@@ -1,5 +1,6 @@
 import { createUser, getUserById, searchByName } from "./user";
-import { addToCart, calcTotal, removeFromCart } from "./cart";
+import { addToCart, calcTotal, removeFromCart, applyCoupon } from "./cart";
+import { registerCoupon } from "./coupon";
 import { createOrder, updateStatus, getOrdersByUser } from "./order";
 
 // 動作確認用のサンプルスクリプト
@@ -17,6 +18,16 @@ console.log("\n=== カート操作 ===");
 const cart = addToCart(alice.id, laptop, 1);
 addToCart(alice.id, mouse, 2);
 console.log("合計:", calcTotal(cart));
+
+console.log("\n=== クーポン適用 ===");
+registerCoupon("SAVE10", 10); // 10%割引
+applyCoupon(alice.id, "SAVE10");
+console.log("割引後合計:", calcTotal(cart));
+try {
+  applyCoupon(alice.id, "SAVE10"); // 2回目は失敗する
+} catch (e) {
+  console.log("エラー:", (e as Error).message);
+}
 
 console.log("\n=== 注文作成 ===");
 const order = createOrder(alice.id, cart);

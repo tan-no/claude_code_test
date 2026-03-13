@@ -1,3 +1,5 @@
+import { Coupon, getCoupon, hasUsedCoupon, markCouponUsed } from "./coupon";
+
 export interface Product {
   id: number;
   name: string;
@@ -13,6 +15,7 @@ export interface CartItem {
 export interface Cart {
   userId: number;
   items: CartItem[];
+  appliedCoupon?: Coupon;
 }
 
 const carts: Map<number, Cart> = new Map();
@@ -36,10 +39,30 @@ export function addToCart(userId: number, product: Product, quantity: number): C
   return cart;
 }
 
-// カートの合計金額を計算する
+// カートの合計金額を計算する（クーポンが適用されている場合は割引後の金額を返す）
 export function calcTotal(cart: Cart): number {
   // バグ②: 小数点の丸め処理がないため、0.1 + 0.2 のような浮動小数点誤差が発生する
-  return cart.items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  const subtotal = cart.items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  if (cart.appliedCoupon) {
+    return subtotal * (1 - cart.appliedCoupon.discountRate / 100);
+  }
+  return subtotal;
+}
+
+// クーポンをカートに適用する
+export function applyCoupon(userId: number, code: string): void {
+  const cart = carts.get(userId);
+  if (!cart) throw new Error("カートが存在しません");
+
+  const coupon = getCoupon(code);
+  if (!coupon) throw new Error(`クーポンコード "${code}" は存在しません`);
+
+  if (hasUsedCoupon(userId, code)) {
+    throw new Error(`クーポン "${code}" はすでに使用済みです`);
+  }
+
+  cart.appliedCoupon = coupon;
+  markCouponUsed(userId, code);
 }
 
 // カートからアイテムを削除する
