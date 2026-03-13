@@ -16,6 +16,7 @@ let clearCart: typeof CartModule.clearCart;
 let calcTotal: typeof CartModule.calcTotal;
 let applyCoupon: typeof CartModule.applyCoupon;
 let itemCount: typeof CartModule.itemCount;
+let duplicateCart: typeof CartModule.duplicateCart;
 let registerCoupon: typeof CouponModule.registerCoupon;
 
 // coupon → cart の順でロードし、cart.ts 内部でも同じキャッシュが使われるようにする
@@ -29,6 +30,7 @@ beforeEach(() => {
   calcTotal = cartMod.calcTotal;
   applyCoupon = cartMod.applyCoupon;
   itemCount = cartMod.itemCount;
+  duplicateCart = cartMod.duplicateCart;
   registerCoupon = couponMod.registerCoupon;
 });
 
@@ -280,5 +282,67 @@ describe("itemCount", () => {
     const product = { id: 1, name: "Item", price: 100, stock: 5 };
     const cart = addToCart(1, product, 1);
     expect(itemCount(cart)).toBe(1);
+  });
+});
+
+// ─── duplicateCart ───────────────────────────────────────────────
+describe("duplicateCart", () => {
+  test("正常: コピー元のアイテムがコピー先に複製される", () => {
+    const p1 = { id: 1, name: "Laptop", price: 120000, stock: 5 };
+    const p2 = { id: 2, name: "Mouse", price: 3000, stock: 10 };
+    const sourceCart = addToCart(1, p1, 2);
+    addToCart(1, p2, 1);
+    // コピー先カートを先に作成する
+    const targetCart = addToCart(2, p1, 1);
+    duplicateCart(1, 2);
+    // コピー後、コピー先の合計金額がコピー元と一致すること
+    expect(calcTotal(targetCart)).toBe(calcTotal(sourceCart));
+    expect(itemCount(targetCart)).toBe(itemCount(sourceCart));
+  });
+
+  test("正常: コピー先カートのアイテム内容がコピー元と同じになる", () => {
+    const product = { id: 1, name: "Laptop", price: 120000, stock: 5 };
+    addToCart(1, product, 3);
+    const targetCart = addToCart(2, product, 1);
+    duplicateCart(1, 2);
+    expect(targetCart.items).toHaveLength(1);
+    expect(targetCart.items[0].product.id).toBe(1);
+    expect(targetCart.items[0].quantity).toBe(3);
+  });
+
+  test("正常: クーポンもコピー先に複製される", () => {
+    const product = { id: 1, name: "Item", price: 1000, stock: 5 };
+    addToCart(1, product, 1);
+    const targetCart = addToCart(2, product, 1);
+    registerCoupon("COPY10", 10);
+    applyCoupon(1, "COPY10");
+    duplicateCart(1, 2);
+    // コピー先カートにクーポンが設定されていること
+    expect(targetCart.appliedCoupon?.code).toBe("COPY10");
+    expect(targetCart.appliedCoupon?.discountRate).toBe(10);
+    // クーポン適用後の合計金額が正しいこと
+    expect(calcTotal(targetCart)).toBe(900);
+  });
+
+  test("異常: コピー元カートが存在しない場合はエラー", () => {
+    addToCart(2, { id: 1, name: "Item", price: 1000, stock: 5 }, 1);
+    expect(() => duplicateCart(999, 2)).toThrow("コピー元のカートが存在しません");
+  });
+
+  test("異常: コピー先カートが存在しない場合はエラー", () => {
+    addToCart(1, { id: 1, name: "Item", price: 1000, stock: 5 }, 1);
+    expect(() => duplicateCart(1, 999)).toThrow("コピー先のカートが存在しません");
+  });
+
+  test("境界値: コピー後にコピー元のプロダクトを変更してもコピー先に影響しない（ディープコピー）", () => {
+    const product = { id: 1, name: "Item", price: 1000, stock: 10 };
+    const sourceCart = addToCart(1, product, 2);
+    const targetCart = addToCart(2, product, 1);
+    duplicateCart(1, 2);
+    // コピー後、コピー元のアイテムのプロダクト価格を変更
+    sourceCart.items[0].product.price = 9999;
+    // コピー先カートの価格は変更されていないこと（独立したコピー）
+    expect(targetCart.items[0].product.price).toBe(1000);
+    expect(calcTotal(targetCart)).toBe(2000);
   });
 });

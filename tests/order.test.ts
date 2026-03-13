@@ -24,6 +24,7 @@ let createOrder: typeof OrderModule.createOrder;
 let updateStatus: typeof OrderModule.updateStatus;
 let getOrdersByUser: typeof OrderModule.getOrdersByUser;
 let cancelOrder: typeof OrderModule.cancelOrder;
+let recalcTotal: typeof OrderModule.recalcTotal;
 
 /** テストごとにモジュール全体をリセットして独立した状態を確保する */
 beforeEach(() => {
@@ -42,6 +43,7 @@ beforeEach(() => {
   updateStatus = orderMod.updateStatus;
   getOrdersByUser = orderMod.getOrdersByUser;
   cancelOrder = orderMod.cancelOrder;
+  recalcTotal = orderMod.recalcTotal;
 });
 
 // ─── createOrder ─────────────────────────────────────────────────
@@ -277,5 +279,51 @@ describe("cancelOrder", () => {
     cancelOrder(order.id);
     cancelOrder(order.id); // 2 回目
     expect(order.status).toBe("cancelled");
+  });
+});
+
+// ─── recalcTotal ──────────────────────────────────────────────────
+describe("recalcTotal", () => {
+  test("正常: 単一アイテムの合計金額を正しく計算する", () => {
+    const user = createUser("Alice", "alice@example.com", "viewer");
+    const cart = addToCart(user.id, { id: 1, name: "Item", price: 1000, stock: 5 }, 3);
+    const order = createOrder(user.id, cart);
+
+    const total = recalcTotal(order.id);
+    expect(total).toBe(3000);
+  });
+
+  test("正常: 計算結果が order.total に反映される", () => {
+    const user = createUser("Alice", "alice@example.com", "viewer");
+    const cart = addToCart(user.id, { id: 1, name: "Item", price: 500, stock: 5 }, 2);
+    const order = createOrder(user.id, cart);
+
+    recalcTotal(order.id);
+    expect(order.total).toBe(1000);
+  });
+
+  test("正常: 複数アイテムの合計金額を正しく計算する", () => {
+    const user = createUser("Alice", "alice@example.com", "viewer");
+    addToCart(user.id, { id: 1, name: "ItemA", price: 300, stock: 5 }, 2);
+    const cart = addToCart(user.id, { id: 2, name: "ItemB", price: 700, stock: 5 }, 1);
+    const order = createOrder(user.id, cart);
+
+    const total = recalcTotal(order.id);
+    // 300 * 2 + 700 * 1 = 1300
+    expect(total).toBe(1300);
+  });
+
+  test("正常: 小数を含む価格が Math.round で2桁に丸められる", () => {
+    const user = createUser("Alice", "alice@example.com", "viewer");
+    const cart = addToCart(user.id, { id: 1, name: "Item", price: 0.1, stock: 5 }, 3);
+    const order = createOrder(user.id, cart);
+
+    const total = recalcTotal(order.id);
+    // 0.1 * 3 = 0.30000000000000004 → Math.round(0.30000000000000004 * 100) / 100 = 0.3
+    expect(total).toBe(0.3);
+  });
+
+  test("異常: 存在しない注文 ID はエラー", () => {
+    expect(() => recalcTotal(999)).toThrow("見つかりません");
   });
 });

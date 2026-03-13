@@ -89,6 +89,23 @@ export function getOrdersByUser(userId: number): Order[] {
 }
 
 /**
+ * 注文の合計金額を items の現在の内容から再計算して更新する。
+ * 各アイテムの price * quantity を合計し、小数点2桁に丸めて返す。
+ */
+export function recalcTotal(orderId: number): number {
+  const order = orders.find((o) => o.id === orderId);
+  if (!order) throw new Error(`注文ID ${orderId} が見つかりません`);
+
+  const raw = order.items.reduce(
+    (sum, item) => sum + item.product.price * item.quantity,
+    0
+  );
+  const total = Math.round(raw * 100) / 100;
+  order.total = total;
+  return total;
+}
+
+/**
  * 注文をキャンセルする。
  * shipped 済みの注文はキャンセルできない。
  * 注文が存在しない場合は何もしない。

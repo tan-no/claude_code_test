@@ -13,6 +13,7 @@ let getUserByEmail: typeof UserModule.getUserByEmail;
 let updateRole: typeof UserModule.updateRole;
 let listUsers: typeof UserModule.listUsers;
 let searchByName: typeof UserModule.searchByName;
+let deleteUser: typeof UserModule.deleteUser;
 
 beforeEach(() => {
   jest.resetModules();
@@ -23,6 +24,7 @@ beforeEach(() => {
   updateRole = mod.updateRole;
   listUsers = mod.listUsers;
   searchByName = mod.searchByName;
+  deleteUser = mod.deleteUser;
 });
 
 // ─── createUser ──────────────────────────────────────────────────
@@ -167,5 +169,36 @@ describe("searchByName", () => {
     createUser("Alice", "a@example.com", "viewer");
     // 現状: includes("alice") は "Alice" にヒットしない → このテストは FAIL する
     expect(searchByName("alice")).toHaveLength(1);
+  });
+});
+
+// ─── deleteUser ──────────────────────────────────────────────────
+describe("deleteUser", () => {
+  test("正常: 存在するユーザーを削除できる", () => {
+    const user = createUser("Alice", "alice@example.com", "viewer");
+    expect(() => deleteUser(user.id)).not.toThrow();
+  });
+
+  test("正常: 削除後は getUserById で取得できなくなる", () => {
+    const user = createUser("Alice", "alice@example.com", "viewer");
+    deleteUser(user.id);
+    expect(getUserById(user.id)).toBeUndefined();
+  });
+
+  test("エッジ: 削除後は listUsers に含まれない", () => {
+    const u1 = createUser("Alice", "a@example.com", "viewer");
+    const u2 = createUser("Bob", "b@example.com", "viewer");
+    deleteUser(u1.id);
+    const list = listUsers();
+    expect(list).toHaveLength(1);
+    expect(list[0].id).toBe(u2.id);
+  });
+
+  test("異常: 存在しない ID を削除しようとするとエラーをスロー", () => {
+    expect(() => deleteUser(999)).toThrow();
+  });
+
+  test("異常: エラーメッセージに対象 ID が含まれる", () => {
+    expect(() => deleteUser(42)).toThrow("42");
   });
 });

@@ -36,3 +36,16 @@ console.log(order);
 console.log("\n=== ステータス更新 ===");
 updateStatus(order.id, "paid");
 console.log(getOrdersByUser(alice.id));
+
+// デバッグ検証用
+console.log("\n=== 存在しないユーザー ===");
+const ghost = getUserById(999);
+console.log("ghost:", ghost); // undefined
+
+console.log("\n=== 空カートでの注文 ===");
+const emptyCart = { userId: 1, items: [] };
+try {
+  createOrder(1, emptyCart);
+} catch (e) {
+  console.log("エラー:", (e as Error).message);
+}
