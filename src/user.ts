@@ -79,3 +79,16 @@ export function listUsers(): User[] {
 export function searchByName(query: string): User[] {
   return users.filter((u) => u.name.toLowerCase().includes(query.toLowerCase()));
 }
+
+/**
+ * 指定したユーザーを削除する。
+ * @param userId - 削除対象のユーザーID
+ * @throws ユーザーが存在しない場合にエラーをスロー
+ */
+export function deleteUser(userId: number): void {
+  const index = users.findIndex((u) => u.id === userId);
+  if (index === -1) {
+    throw new Error(`ユーザーID ${userId} が見つかりません`);
+  }
+  users.splice(index, 1);
+}

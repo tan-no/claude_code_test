@@ -123,3 +123,28 @@ export function clearCart(userId: number): void {
 export function itemCount(cart: Cart): number {
   return cart.items.reduce((sum, item) => sum + item.quantity, 0);
 }
+
+/**
+ * コピー元ユーザーのカートをコピー先ユーザーのカートに複製する。
+ * アイテムとクーポンをディープコピーして上書きする。
+ * @param sourceUserId - コピー元のユーザーID
+ * @param targetUserId - コピー先のユーザーID
+ * @throws コピー元のカートが存在しない場合
+ * @throws コピー先のカートが存在しない場合
+ */
+export function duplicateCart(sourceUserId: number, targetUserId: number): void {
+  const sourceCart = carts.get(sourceUserId);
+  if (!sourceCart) throw new Error("コピー元のカートが存在しません");
+
+  const targetCart = carts.get(targetUserId);
+  if (!targetCart) throw new Error("コピー先のカートが存在しません");
+
+  targetCart.items = sourceCart.items.map((item) => ({
+    product: { ...item.product },
+    quantity: item.quantity,
+  }));
+
+  targetCart.appliedCoupon = sourceCart.appliedCoupon
+    ? { ...sourceCart.appliedCoupon }
+    : undefined;
+}
