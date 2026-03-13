@@ -1,0 +1,15 @@
+{
+  "name": "sample-repo",
+  "version": "1.0.0",
+  "description": "Claude Code検証用サンプルプロジェクト",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "ts-node src/index.ts",
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.0.0",
+    "typescript": "^5.9.3"
+  }
+}
