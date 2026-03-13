@@ -15,16 +15,38 @@ export interface Order {
 const orders: Order[] = [];
 let nextOrderId = 1;
 
-// カートの内容から注文を作成する
-export function createOrder(userId: number, cart: Cart): Order {
-  // バグ①: カートが空かどうかチェックしていない
-  const user = getUserById(userId);
+/** 許可するステータス遷移テーブル */
+const VALID_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
+  pending: ["paid", "cancelled"],
+  paid: ["shipped", "cancelled"],
+  shipped: [],
+  cancelled: [],
+};
 
-  // バグ②: user が undefined のとき（存在しないuserId）でも処理が続いてしまう
+/**
+ * カートの内容から注文を作成する。
+ * 注文作成時に各商品の在庫をデクリメントし、
+ * 価格変更の影響を受けないようにproductはディープコピーで保持する。
+ * 注文作成後、対象ユーザーのカートは削除される。
+ */
+export function createOrder(userId: number, cart: Cart): Order {
+  if (cart.items.length === 0) throw new Error("カートが空です");
+  const user = getUserById(userId);
+  if (!user) throw new Error(`ユーザーID ${userId} が見つかりません`);
+
+  // 在庫デクリメント + productをディープコピーして注文時点の価格・状態を固定する
+  const items = cart.items.map((item) => {
+    item.product.stock -= item.quantity;
+    return {
+      product: { ...item.product },
+      quantity: item.quantity,
+    };
+  });
+
   const order: Order = {
     id: nextOrderId++,
     userId: user.id,
-    items: [...cart.items],
+    items,
     total: calcTotal(cart),
     status: "pending",
     createdAt: new Date(),
@@ -35,25 +57,49 @@ export function createOrder(userId: number, cart: Cart): Order {
   return order;
 }
 
-// 注文のステータスを更新する
+/**
+ * 注文のステータスを更新する。
+ * VALID_TRANSITIONS に基づき、不正な遷移はエラーをスローする。
+ */
 export function updateStatus(orderId: number, status: OrderStatus): Order {
   const order = orders.find((o) => o.id === orderId);
-  // バグ③: order が undefined のとき TypeError になる（ガード節なし）
-  order!.status = status;
-  return order!;
+  if (!order) throw new Error(`注文ID ${orderId} が見つかりません`);
+
+  const allowed = VALID_TRANSITIONS[order.status];
+  if (!allowed.includes(status)) {
+    throw new Error(
+      `ステータスを "${order.status}" から "${status}" に変更できません`
+    );
+  }
+
+  order.status = status;
+  return order;
 }
 
-// ユーザーの注文履歴を取得する
+/**
+ * ユーザーの注文履歴を取得する（作成日時の降順）。
+ */
 export function getOrdersByUser(userId: number): Order[] {
-  // バグ④: 直近順に並んでいない（作成日でソートしていない）
-  return orders.filter((o) => o.userId === userId);
+  return orders
+    .filter((o) => o.userId === userId)
+    .sort(
+      (a, b) =>
+        b.createdAt.getTime() - a.createdAt.getTime() || b.id - a.id
+    );
 }
 
-// 注文をキャンセルする
+/**
+ * 注文をキャンセルする。
+ * shipped 済みの注文はキャンセルできない。
+ * 注文が存在しない場合は何もしない。
+ */
 export function cancelOrder(orderId: number): void {
   const order = orders.find((o) => o.id === orderId);
   if (!order) return;
 
-  // バグ⑤: shipped 済みの注文もキャンセルできてしまう
+  if (order.status === "shipped") {
+    throw new Error("出荷済みの注文はキャンセルできません");
+  }
+
   order.status = "cancelled";
 }

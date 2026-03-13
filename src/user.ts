@@ -11,9 +11,17 @@ export interface User {
 const users: User[] = [];
 let nextId = 1;
 
-// ユーザーを新規登録する
+/**
+ * ユーザーを新規登録する。
+ * @param name - ユーザーの表示名
+ * @param email - メールアドレス
+ * @param role - 付与するロール
+ * @returns 作成されたユーザーオブジェクト
+ */
 export function createUser(name: string, email: string, role: Role): User {
-  // バグ①: メールアドレスの重複チェックがない
+  if (users.some((u) => u.email === email)) {
+    throw new Error(`メールアドレス "${email}" は既に使用されています`);
+  }
   const user: User = {
     id: nextId,
     name,
@@ -26,30 +34,48 @@ export function createUser(name: string, email: string, role: Role): User {
   return user;
 }
 
-// IDでユーザーを取得する
-export function getUserById(id: number): User {
-  // バグ②: 見つからない場合に undefined を返すが戻り値型が User（非nullableで不整合）
-  return users.find((u) => u.id === id) as User;
+/**
+ * IDでユーザーを取得する。
+ * @param id - 検索するユーザーID
+ * @returns 対応するユーザーオブジェクト（存在しない場合は `undefined`）
+ */
+export function getUserById(id: number): User | undefined {
+  return users.find((u) => u.id === id);
 }
 
-// メールアドレスでユーザーを検索する
+/**
+ * メールアドレスでユーザーを検索する。
+ * @param email - 検索するメールアドレス
+ * @returns 対応するユーザーオブジェクト、存在しない場合は `undefined`
+ */
 export function getUserByEmail(email: string): User | undefined {
-  return users.find((u) => u.Email === email); // バグ③: プロパティ名typo（email → Email）
+  return users.find((u) => u.email === email); // バグ③: プロパティ名typo（email → Email）
 }
 
-// ロールを更新する
+/**
+ * 指定ユーザーのロールを更新する。
+ * @param id - 更新対象のユーザーID
+ * @param newRole - 新しく設定するロール
+ */
 export function updateRole(id: number, newRole: Role): void {
   const user = getUserById(id);
+  if (!user) throw new Error(`ユーザーID ${id} が見つかりません`);
   user.role = newRole;
 }
 
-// 全ユーザーを取得する
+/**
+ * 全ユーザーの一覧を取得する。
+ * @returns 登録済みユーザーの配列
+ */
 export function listUsers(): User[] {
-  return users;
+  return [...users];
 }
 
-// 名前でユーザーを検索する（部分一致）
+/**
+ * 名前でユーザーを検索する（部分一致）。
+ * @param query - 検索キーワード
+ * @returns 名前にキーワードを含むユーザーの配列
+ */
 export function searchByName(query: string): User[] {
-  // バグ④: 大文字小文字を区別してしまう（toLowerCase がない）
-  return users.filter((u) => u.name.includes(query));
+  return users.filter((u) => u.name.toLowerCase().includes(query.toLowerCase()));
 }
