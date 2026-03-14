@@ -116,6 +116,14 @@ export function clearCart(userId: number): void {
 }
 
 /**
+ * ユーザーのカートを取得する。存在しない場合は undefined を返す。
+ * @param userId - 取得するユーザーID
+ */
+export function getCart(userId: number): Cart | undefined {
+  return carts.get(userId);
+}
+
+/**
  * カート内の合計アイテム数を返す。
  * @param cart - 対象のカートオブジェクト
  * @returns 全アイテムの数量の合計
